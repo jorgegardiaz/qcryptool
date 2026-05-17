@@ -1,0 +1,37 @@
+name: Coverage
+
+on:
+  push:
+    branches: [ "master" ]
+
+jobs:
+  coverage:
+    name: Code Coverage
+    runs-on: ubuntu-latest
+    # Permitir que el bot haga push del badge generado
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: llvm-tools-preview
+      - name: Install cargo-llvm-cov
+        uses: taiki-e/install-action@cargo-llvm-cov
+      - name: Generate code coverage
+        run: cargo llvm-cov --all-features --workspace --json --output-path coverage.json
+      - name: Create badges directory
+        run: mkdir -p .github/badges
+      - name: Generate coverage badge
+        run: |
+          COVERAGE=$(jq -r '.data[0].totals.functions.percent' coverage.json)
+          COLOR=$(awk -v cov="$COVERAGE" 'BEGIN { if (cov >= 90) print "brightgreen"; else if (cov >= 75) print "yellow"; else print "red" }')
+          curl -s "https://img.shields.io/badge/Fn%20Coverage-${COVERAGE}%25-${COLOR}.svg" > .github/badges/coverage.svg
+      - name: Commit and push badge
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add .github/badges/coverage.svg
+          git commit -m "ci: update coverage badge [skip ci]" || echo "No changes to commit"
+          git push
