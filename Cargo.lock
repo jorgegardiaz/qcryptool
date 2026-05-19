@@ -592,9 +592,9 @@ dependencies = [
 
 [[package]]
 name = "qcrypto"
-version = "0.1.1"
+version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9cf89985467fc28ddab83eddd9356bb37d0470550048935f3312ae8fd2f79f21"
+checksum = "b273689fbff083818184049f305b19a2a1ff20afaf355826856a084f710fdb3b"
 dependencies = [
  "nalgebra",
  "ndarray",
@@ -607,7 +607,7 @@ dependencies = [
 
 [[package]]
 name = "qcryptool"
-version = "0.0.1"
+version = "0.1.0"
 dependencies = [
  "clap",
  "indicatif",
