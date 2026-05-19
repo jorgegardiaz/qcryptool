@@ -1,7 +1,7 @@
 {
   "protocol": "e91",
-  "num_qubits": 10000,
-  "shots": 500,
+  "num_qubits": 1024,
+  "shots": 1000,
   "seed": 42,
   "out_file": "e91_eve_intercept_resend.csv",
   "channel1": "identity",

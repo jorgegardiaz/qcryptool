@@ -1,7 +1,7 @@
 {
   "protocol": "gc01",
-  "num_qubits": 1000,
-  "shots": 500,
+  "num_qubits": 1024,
+  "shots": 1000,
   "seed": 42,
   "out_file": "gc01_asymmetric_verifiers.csv",
   "channel_config": [

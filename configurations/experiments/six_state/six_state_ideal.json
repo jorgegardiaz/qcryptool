@@ -1,7 +1,7 @@
 {
   "protocol": "six-state",
-  "num_qubits": 10000,
-  "shots": 500,
+  "num_qubits": 1024,
+  "shots": 1000,
   "seed": 42,
   "out_file": "six_state_ideal.csv",
   "channel1": "identity",

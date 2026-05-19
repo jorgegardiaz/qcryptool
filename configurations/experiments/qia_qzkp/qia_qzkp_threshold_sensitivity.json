@@ -1,7 +1,7 @@
 {
   "protocol": "qia-qzkp",
-  "num_qubits": 500,
-  "shots": 500,
+  "num_qubits": 1024,
+  "shots": 1000,
   "seed": 42,
   "out_file": "qia_qzkp_threshold_sensitivity.csv",
   "channel1": "depolarizing",
