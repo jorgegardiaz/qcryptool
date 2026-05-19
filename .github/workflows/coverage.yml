@@ -27,7 +27,7 @@ jobs:
         run: |
           COVERAGE=$(jq -r '.data[0].totals.functions.percent' coverage.json)
           COLOR=$(awk -v cov="$COVERAGE" 'BEGIN { if (cov >= 90) print "brightgreen"; else if (cov >= 75) print "yellow"; else print "red" }')
-          curl -s "https://img.shields.io/badge/Fn%20Coverage-${COVERAGE}%25-${COLOR}.svg" > .github/badges/coverage.svg
+          curl -s "https://img.shields.io/badge/Coverage-${COVERAGE}%25-${COLOR}.svg" > .github/badges/coverage.svg
       - name: Commit and push badge
         run: |
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
