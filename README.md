@@ -10,7 +10,6 @@
     
   [![Pure Rust](https://img.shields.io/badge/Pure-Rust-orange)](https://www.rust-lang.org)
   [![Crates.io](https://img.shields.io/crates/v/qcryptool.svg)](https://crates.io/crates/qcryptool)
-  [![Docs](https://docs.rs/qcryptool/badge.svg)](https://docs.rs/qcryptool)
   [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
   [![Rust CI](https://github.com/jorgegardiaz/qcryptool/actions/workflows/test.yml/badge.svg)](https://github.com/jorgegardiaz/qcryptool/actions/workflows/test.yml)
   ![Coverage](https://raw.githubusercontent.com/jorgegardiaz/qcryptool/master/.github/badges/coverage.svg)
