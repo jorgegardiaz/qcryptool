@@ -1,0 +1,45 @@
+{
+  "protocol": "gc01",
+  "num_qubits": 1000,
+  "shots": 500,
+  "seed": 42,
+  "out_file": "gc01_asymmetric_verifiers.csv",
+  "channel_config": [
+    {
+      "type": "amplitude-damping",
+      "p_range": [
+        0.02,
+        0.07
+      ],
+      "weight": 0.60
+    },
+    {
+      "type": "depolarizing",
+      "p_range": [
+        0.01,
+        0.04
+      ],
+      "weight": 0.40
+    }
+  ],
+  "channel_config2": [
+    {
+      "type": "phase-damping",
+      "p_range": [
+        0.02,
+        0.08
+      ],
+      "weight": 0.70
+    },
+    {
+      "type": "depolarizing",
+      "p_range": [
+        0.01,
+        0.05
+      ],
+      "weight": 0.30
+    }
+  ],
+  "threshold": 0.10,
+  "keys_out": true
+}

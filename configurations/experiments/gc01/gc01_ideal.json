@@ -1,0 +1,10 @@
+{
+  "protocol": "gc01",
+  "num_qubits": 1000,
+  "shots": 500,
+  "seed": 42,
+  "out_file": "gc01_ideal.csv",
+  "channel1": "identity",
+  "threshold": 0.10,
+  "keys_out": true
+}

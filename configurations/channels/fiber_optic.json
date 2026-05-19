@@ -1,0 +1,12 @@
+[
+  {
+    "type": "amplitude-damping",
+    "p_range": [0.02, 0.08],
+    "weight": 0.65
+  },
+  {
+    "type": "depolarizing",
+    "p_range": [0.005, 0.03],
+    "weight": 0.35
+  }
+]

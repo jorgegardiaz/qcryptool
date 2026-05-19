@@ -1,0 +1,17 @@
+[
+  {
+    "type": "bit-flip",
+    "p_range": [0.01, 0.08],
+    "weight": 0.40
+  },
+  {
+    "type": "phase-flip",
+    "p_range": [0.01, 0.08],
+    "weight": 0.40
+  },
+  {
+    "type": "bit-phase-flip",
+    "p_range": [0.01, 0.06],
+    "weight": 0.20
+  }
+]

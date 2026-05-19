@@ -1,0 +1,7 @@
+[
+  {
+    "type": "depolarizing",
+    "p_range": [0.0, 0.15],
+    "weight": 1.0
+  }
+]

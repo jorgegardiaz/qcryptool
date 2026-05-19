@@ -1,0 +1,11 @@
+{
+  "protocol": "six-state",
+  "num_qubits": 10000,
+  "shots": 500,
+  "seed": 42,
+  "out_file": "six_state_eve_intercept_resend.csv",
+  "channel1": "identity",
+  "eve_ratio": 0.5,
+  "check_ratio": 0.5,
+  "keys_out": true
+}

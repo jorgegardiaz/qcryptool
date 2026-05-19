@@ -1,0 +1,23 @@
+[
+  {
+    "type": "depolarizing",
+    "p_range": [0.01, 0.07],
+    "weight": 0.35
+  },
+  {
+    "type": "amplitude-damping",
+    "p_range": [0.01, 0.07],
+    "weight": 0.25
+  },
+  {
+    "type": "phase-damping",
+    "p_range": [0.01, 0.06],
+    "weight": 0.25
+  },
+  {
+    "type": "amplitude-phase-damping",
+    "p_range": [0.01, 0.05],
+    "q_range": [0.005, 0.025],
+    "weight": 0.15
+  }
+]

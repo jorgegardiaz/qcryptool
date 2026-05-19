@@ -1,0 +1,11 @@
+{
+  "protocol": "gc01",
+  "num_qubits": 1000,
+  "shots": 500,
+  "seed": 42,
+  "out_file": "gc01_eve_intercept_resend.csv",
+  "channel1": "identity",
+  "eve_ratio": 0.5,
+  "threshold": 0.10,
+  "keys_out": true
+}

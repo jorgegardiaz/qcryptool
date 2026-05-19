@@ -1,0 +1,12 @@
+{
+  "protocol": "qia-qzkp",
+  "num_qubits": 500,
+  "shots": 500,
+  "seed": 42,
+  "out_file": "qia_qzkp_depolarizing_sweep.csv",
+  "channel1": "depolarizing",
+  "p1_min": 0.0,
+  "p1_max": 0.15,
+  "threshold": 0.90,
+  "keys_out": true
+}

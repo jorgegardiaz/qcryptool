@@ -1,0 +1,23 @@
+[
+  {
+    "type": "bit-flip",
+    "p": 0.01,
+    "weight": 0.5
+  },
+  {
+    "type": "depolarizing",
+    "p": 0.03,
+    "weight": 0.3
+  },
+  {
+    "type": "amplitude-damping",
+    "p": 0.05,
+    "weight": 0.15
+  },
+  {
+    "type": "amplitude-phase-damping",
+    "p": 0.04,
+    "q": 0.02,
+    "weight": 0.05
+  }
+]

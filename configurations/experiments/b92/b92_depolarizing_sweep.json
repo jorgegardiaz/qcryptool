@@ -1,0 +1,13 @@
+{
+  "protocol": "b92",
+  "num_qubits": 10000,
+  "shots": 500,
+  "seed": 42,
+  "out_file": "b92_depolarizing_sweep.csv",
+  "channel1": "depolarizing",
+  "p1_min": 0.0,
+  "p1_max": 0.15,
+  "eve_ratio": 0.0,
+  "check_ratio": 0.5,
+  "keys_out": true
+}

@@ -1,0 +1,8 @@
+[
+  {
+    "type": "amplitude-phase-damping",
+    "p_range": [0.01, 0.08],
+    "q_range": [0.005, 0.04],
+    "weight": 1.0
+  }
+]
