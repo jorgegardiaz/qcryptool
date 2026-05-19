@@ -3,63 +3,83 @@
   <h1>qcryptool</h1>
   
   <p>
-    <strong>A Pure Rust Framework for Quantum Cryptography Simulation</strong>
+    <strong>A Pure Rust Tool for Quantum Cryptography Simulation</strong>
   </p>
 
-  <img src="./assets/qcrypto_logo.png" alt="qcrypto logo" width="150">
+  <img src="./assets/qcryptool_logo.png" alt="qcrypto logo" width="150">
     
   [![Pure Rust](https://img.shields.io/badge/Pure-Rust-orange)](https://www.rust-lang.org)
   [![Crates.io](https://img.shields.io/crates/v/qcryptool.svg)](https://crates.io/crates/qcryptool)
-  [![Docs](https://docs.rs/qcryptool/badge.svg)](https://docs.rs/qcrypto)
+  [![Docs](https://docs.rs/qcryptool/badge.svg)](https://docs.rs/qcryptool)
   [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
   [![Rust CI](https://github.com/jorgegardiaz/qcryptool/actions/workflows/test.yml/badge.svg)](https://github.com/jorgegardiaz/qcryptool/actions/workflows/test.yml)
   ![Coverage](https://raw.githubusercontent.com/jorgegardiaz/qcryptool/master/.github/badges/coverage.svg)
 
+  <br/> 
 
 </div>
 
 CLI simulator for quantum cryptography protocols, powered by [qcrypto](https://github.com/jorgegardiaz/qcrypto).
 
-## Building
+## Installation
+
+### From crates.io (recommended)
+
+Requires [Rust](https://rustup.rs) 1.85 or later.
 
 ```bash
+cargo install qcryptool
+```
+
+The binary is added to `~/.cargo/bin/` and available system-wide as `qcryptool`.
+
+### From source
+
+```bash
+git clone https://github.com/jorgegardiaz/qcryptool.git
+cd qcryptool
 cargo build --release
 ```
 
-The binary is placed at `target/release/qcryptool`.
+The compiled binary is placed at `target/release/qcryptool`. You can run it directly or copy it to a directory on your `$PATH`:
+
+```bash
+cp target/release/qcryptool ~/.local/bin/
+```
 
 ---
 
 ## Protocols
 
-| Subcommand   | Protocol                                      |
-|--------------|-----------------------------------------------|
-| `bb84`       | BB84 — Bennett & Brassard (1984)              |
-| `b92`        | B92 — Bennett (1992)                          |
-| `bbm92`      | BBM92 — entanglement-based BB84               |
-| `e91`        | E91 — Ekert (1991), Bell inequality test      |
-| `six-state`  | Six-State — Pasquinucci & Gisin (1999)        |
-| `sarg04`     | SARG04 — Scarani, Acín, Ribordy & Gisin (2004)|
-| `qia-qzkp`   | QIA-QZKP — Quantum Identity Authentication   |
+| Subcommand   | Protocol                                                        |
+|--------------|-----------------------------------------------------------------|
+| `bb84`       | BB84 QKD — Bennett & Brassard (1984)                           |
+| `b92`        | B92 QKD — Bennett (1992)                                       |
+| `bbm92`      | BBM92 QKD — Bennett, Brassard & Mermin (1992), entanglement-based BB84 |
+| `e91`        | E91 QKD — Ekert (1991), entanglement + Bell inequality test    |
+| `six-state`  | Six-State QKD — Pasquinucci & Gisin (1999)                    |
+| `sarg04`     | SARG04 QKD — Scarani, Acín, Ribordy & Gisin (2004)            |
+| `qia-qzkp`   | QIA-QZKP — Quantum Identity Authentication via Zero-Knowledge Proof |
+| `gc01`       | GC01 QDS — Gottesman & Chuang (2001) Quantum Digital Signature |
 
 ---
 
 ## Basic usage
 
 ```bash
-# Single shot, default channel (bit-flip, no noise)
+# Single shot, identity channel (no noise)
 qcryptool bb84 -n 1000
 
 # 100 shots, depolarizing noise p=0.03, save to CSV
-qcryptool bb84 -n 1024 -s 100 --channel depolarizing --noise 0.03 -o results.csv
+qcryptool bb84 -n 1024 -s 100 --channel1 depolarizing --p1 0.03 -o results.csv
 
-# Entanglement-based with asymmetric noise
-qcryptool bbm92 -n 1000 --noise 0.01 --noise-bob 0.04
+# Entanglement-based with asymmetric noise on Alice and Bob
+qcryptool bbm92 -n 1000 --channel1 depolarizing --p1 0.01 --channel2 depolarizing --p2 0.04
 
-# Reproducible run (each shot uses seed + i)
+# Reproducible run (each shot seeded with seed + i)
 qcryptool bb84 -n 1000 -s 50 --seed 42 -o out.csv
 
-# Include key hex in output
+# Include raw key hex in output
 qcryptool bb84 -n 512 --detail
 ```
 
@@ -70,26 +90,29 @@ qcryptool bb84 -n 512 --detail
 | `-n` / `--num-qubits` | Qubits / pairs / rounds per shot |
 | `-s` / `--shots` | Number of independent runs |
 | `-o` / `--output` | Output file (`.json`, `.csv`, or `.txt`) |
-| `--channel` | Channel model (see table below) |
-| `--noise` | Primary noise probability p ∈ [0, 1] |
-| `--noise2` | Second noise parameter (amplitude-phase-damping only) |
-| `--channel-config` | JSON file with a channel mix (overrides `--channel`/`--noise`) |
-| `--eve-ratio` | Probability of Eve intercepting each qubit |
-| `--check-ratio` | Fraction of sifted bits used for QBER estimation |
-| `--seed` | RNG seed for reproducible simulations |
-| `--detail` | Include raw keys/vectors in the output |
+| `--channel1` | Channel model for Alice (see table below) |
+| `--p1` | Primary noise probability p₁ ∈ [0, 1] |
+| `--q1` | Second noise parameter q₁ ∈ [0, 1] (`amplitude-phase-damping` only) |
+| `--channel-config` | JSON file defining a channel mix (overrides `--channel1` / `--p1`) |
+| `--eve-ratio` | Probability of Eve intercepting each qubit ∈ [0, 1] |
+| `--check-ratio` | Fraction of sifted bits sacrificed for QBER estimation ∈ [0, 1] |
+| `--seed` | RNG seed for reproducible simulations (shot `i` uses `seed + i`) |
+| `--detail` | Include raw keys / commitment vectors in the output |
+
+Entanglement-based protocols (BBM92, E91) and GC01 additionally accept `--channel2` / `--p2` / `--q2` (Bob's or Charlie's channel, defaulting to `--channel1` / `--p1` / `--q1`) and `--channel-config2`.
 
 ### Available channel models
 
-| `--channel` value          | Description                                     |
-|----------------------------|-------------------------------------------------|
-| `bit-flip`                 | Bit-flip error with probability p               |
-| `phase-flip`               | Phase-flip error with probability p             |
-| `bit-phase-flip`           | Combined bit+phase flip with probability p      |
-| `depolarizing`             | Depolarizing noise with probability p           |
-| `amplitude-damping`        | Energy dissipation (T1 decay) with parameter p  |
-| `phase-damping`            | Pure dephasing (T2 decay) with parameter p      |
-| `amplitude-phase-damping`  | Combined T1+T2; uses `--noise` (p) and `--noise2` (λ) |
+| `--channel1` value         | Description                                          |
+|----------------------------|------------------------------------------------------|
+| `identity`                 | No-operation; qubits pass through unmodified         |
+| `bit-flip`                 | X gate applied with probability p                    |
+| `phase-flip`               | Z gate applied with probability p                    |
+| `bit-phase-flip`           | Y gate (X + Z) applied with probability p            |
+| `depolarizing`             | Qubit replaced with maximally mixed state with probability p |
+| `amplitude-damping`        | Energy dissipation (T₁ relaxation) with parameter p  |
+| `phase-damping`            | Pure dephasing (T₂ decay) with parameter p           |
+| `amplitude-phase-damping`  | Combined T₁ + T₂ decay; requires both `--p1` (p) and `--q1` (λ) |
 
 ---
 
@@ -97,7 +120,7 @@ qcryptool bb84 -n 512 --detail
 
 Instead of a fixed channel, you can define a **probabilistic mixture** of channels.
 Each shot draws one channel at random according to the specified weights.
-The channel used is recorded in every output row (`channel_type`, `channel_p`, `channel_p2`).
+The channel used is recorded in every output row (`channel_type`, `channel_p`, `channel_q`).
 
 ### Format
 
@@ -108,8 +131,11 @@ The config file is a JSON **array** of channel entries:
   {
     "type":   "<channel-name>",
     "p":      <noise probability>,
-    "p2":     <second param, optional, default 0>,
-    "weight": <relative weight, optional, default 1>
+    "q":      <second param, optional, default 0>,
+    "weight": <relative weight, optional, default 1>,
+    "p_range": [<min>, <max>],
+    "p_min":   <min>,
+    "p_max":   <max>
   },
   ...
 ]
@@ -117,8 +143,12 @@ The config file is a JSON **array** of channel entries:
 
 - `type` — one of the channel names in the table above (e.g. `"bit-flip"`).
 - `p` — primary noise probability ∈ [0, 1].
-- `p2` — second noise parameter, only used for `"amplitude-phase-damping"`.
-- `weight` — relative weight for random selection. Weights do **not** need to sum to 1; they are normalised internally. Omit to give all channels equal weight.
+- `q` — second noise parameter, only used for `"amplitude-phase-damping"`.
+- `weight` — relative weight for random selection.
+- **Ranges**: You can specify a uniform range for `p` or `q` instead of a fixed value. For each shot, a value is sampled uniformly from the interval.
+    - `p_range`: `[min, max]` (array)
+    - `p_min` / `p_max`: separate fields (also supports `p1_min`/`p1_max` as aliases)
+    - `q_range`, `q_min`, `q_max` work identically for the second parameter.
 
 A single-entry array is equivalent to using `--channel` + `--noise`.
 
@@ -126,46 +156,63 @@ A single-entry array is equivalent to using `--channel` + `--noise`.
 
 ```json
 [
-  { "type": "bit-flip",               "p": 0.01,             "weight": 0.50 },
-  { "type": "depolarizing",           "p": 0.03,             "weight": 0.30 },
-  { "type": "amplitude-damping",      "p": 0.05,             "weight": 0.15 },
-  { "type": "amplitude-phase-damping","p": 0.04, "p2": 0.02, "weight": 0.05 }
+  { "type": "bit-flip", "p_range": [0.01, 0.05], "weight": 0.5 },
+  { "type": "depolarizing", "p_min": 0.02, "p_max": 0.04, "weight": 0.5 }
 ]
 ```
 
-A ready-to-use copy of this example is at `channel_config_example.json`.
+---
+
+## Full Experiment Config (`--experiment-config`)
+
+You can define a full simulation in a single JSON file. This replaces all CLI flags.
+
+### Format
+
+```json
+{
+  "protocol": "bb84",
+  "num_qubits": 1000,
+  "shots": 100,
+  "seed": 42,
+  "out_file": "results.csv",
+  "detail": false,
+
+  "channel1": "depolarizing",
+  "p1_min": 0.01,
+  "p1_max": 0.05,
+
+  "channel_config": [...],
+
+  "eve_ratio": 0.1,
+  "check_ratio": 0.5,
+  "threshold": 0.9
+}
+```
+
+### Protocol-specific fields
+
+| Field | Protocols | Description |
+|-------|-----------|-------------|
+| `num_qubits` | All | Qubits per shot (or rounds for QIA, pairs for BBM92/E91). |
+| `shots` | All | Number of independent runs. |
+| `channel1` / `p1` / `p1_range` | All | Primary channel model and noise parameters. |
+| `channel2` / `p2` / `p2_range` | BBM92, E91, GC01 | Second channel parameters (defaults to `channel1`). |
+| `channel_config` | All | Primary channel mix (overrides `channel1`/`p1`). |
+| `channel_config2`| BBM92, E91, GC01 | Second channel mix (overrides `channel2`/`p2`). |
+| `eve_ratio` | BB84, B92, BBM92, E91, Six-State, SARG04, GC01 | Eve interception probability. |
+| `check_ratio` | BB84, B92, BBM92, E91, Six-State, SARG04 | Sifted bits used for QBER. |
+| `threshold` | QIA-QZKP, GC01 | Acceptance threshold. |
 
 ### Usage
 
 ```bash
-# 200 shots, channel sampled each shot from the mix
-qcryptool bb84 -n 1024 -s 200 --channel-config channel_config_example.json -o results.csv
+# Protocol field in the JSON — no subcommand needed
+qcryptool --experiment-config my_experiment.json
 
-# Reproducible with seed
-qcryptool bb84 -n 1024 -s 200 --channel-config channel_config_example.json --seed 7 -o results.csv
+# Subcommand overrides the JSON protocol field if both are present
+qcryptool bb84 --experiment-config my_experiment.json
 ```
-
-### Output columns added
-
-When `--channel-config` is used (or even with plain `--channel`), every CSV row
-and JSON run entry includes:
-
-| Field          | Description                                   |
-|----------------|-----------------------------------------------|
-| `channel_type` | Name of the channel used in this shot         |
-| `channel_p`    | Primary noise parameter p                     |
-| `channel_p2`   | Second noise parameter (0 when not applicable)|
-
-For **BBM92** and **E91**, Alice and Bob each sample their channel independently
-from the same distribution. The recorded `channel_type`/`channel_p` correspond
-to Alice's channel.
-
-### Notes
-
-- When `--channel-config` is set, `--channel`, `--noise`, and `--noise2` are ignored.
-- For **BBM92**/**E91**, `--noise-bob` is also ignored; use the mix instead.
-- Channel selection is part of the RNG stream, so `--seed` guarantees full
-  reproducibility including which channel each shot uses.
 
 ---
 
@@ -178,7 +225,7 @@ detail is shown. With multiple shots only the aggregate statistics appear.
 
 ### CSV (`-o results.csv`)
 
-One row per shot. Columns: `shot`, `channel_type`, `channel_p`, `channel_p2`,
+One row per shot. Columns: `shot`, `channel_type`, `channel_p`, `channel_q`,
 protocol-specific metrics, and (with `--detail`) raw key hex columns.
 
 ### JSON (`-o results.json`)
