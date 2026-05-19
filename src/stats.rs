@@ -47,9 +47,20 @@ pub struct AuthAgg {
     pub auth_count: usize,
 }
 
+pub struct QdsAgg {
+    pub shots: usize,
+    pub mean_bob_mismatch_rate: f64,
+    pub std_bob_mismatch_rate: f64,
+    pub mean_charlie_mismatch_rate: f64,
+    pub std_charlie_mismatch_rate: f64,
+    pub accept_count: usize,
+    pub mean_eve_count: f64,
+}
+
 pub enum Aggregate {
     Qkd(QkdAgg),
     Auth(AuthAgg),
+    Qds(QdsAgg),
 }
 
 // ── Computation ───────────────────────────────────────────────────────────────
@@ -118,6 +129,42 @@ pub fn compute(runs: &[RunData]) -> Aggregate {
                 auth_count,
             })
         }
+        RunData::Qds(_) => {
+            let bob_rates: Vec<f64> = runs
+                .iter()
+                .filter_map(|r| {
+                    let RunData::Qds(d) = r else { return None };
+                    Some(d.bob_mismatch_rate)
+                })
+                .collect();
+            let charlie_rates: Vec<f64> = runs
+                .iter()
+                .filter_map(|r| {
+                    let RunData::Qds(d) = r else { return None };
+                    Some(d.charlie_mismatch_rate)
+                })
+                .collect();
+            let accept_count = runs
+                .iter()
+                .filter(|r| matches!(r, RunData::Qds(d) if d.signature_accepted))
+                .count();
+            let eve_counts: Vec<f64> = runs
+                .iter()
+                .filter_map(|r| {
+                    let RunData::Qds(d) = r else { return None };
+                    Some(d.eve_intercepted_count as f64)
+                })
+                .collect();
+            Aggregate::Qds(QdsAgg {
+                shots: runs.len(),
+                mean_bob_mismatch_rate: mean(&bob_rates),
+                std_bob_mismatch_rate: std_dev(&bob_rates),
+                mean_charlie_mismatch_rate: mean(&charlie_rates),
+                std_charlie_mismatch_rate: std_dev(&charlie_rates),
+                accept_count,
+                mean_eve_count: mean(&eve_counts),
+            })
+        }
     }
 }
 
@@ -173,6 +220,28 @@ pub fn fmt(agg: &Aggregate) -> String {
                 pct(a.auth_count, a.shots)
             ));
         }
+        Aggregate::Qds(a) => {
+            s.push_str(&format!(
+                "\n═══════════════ Aggregate ({} shots) ═══════════════\n",
+                a.shots
+            ));
+            s.push_str("Protocol       : GC01 (QDS)\n");
+            s.push_str(&format!(
+                "Bob mismatch   : {:.4} ± {:.4}\n",
+                a.mean_bob_mismatch_rate, a.std_bob_mismatch_rate
+            ));
+            s.push_str(&format!(
+                "Charlie mism.  : {:.4} ± {:.4}\n",
+                a.mean_charlie_mismatch_rate, a.std_charlie_mismatch_rate
+            ));
+            s.push_str(&format!(
+                "Sig. accepted  : {}/{} ({:.1}%)\n",
+                a.accept_count,
+                a.shots,
+                pct(a.accept_count, a.shots)
+            ));
+            s.push_str(&format!("Eve intercepts : {:.1} avg\n", a.mean_eve_count));
+        }
     }
     s
 }
@@ -182,6 +251,8 @@ pub fn fmt(agg: &Aggregate) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::channel::ChannelInfo;
+    use crate::run::{QdsRun, QkdRun, RunData};
 
     #[test]
     fn pct_zero_total() {
@@ -230,5 +301,228 @@ mod tests {
         // population std dev of [2, 4, 4, 4, 5, 5, 7, 9] = 2.0
         let v = [2.0, 4.0, 4.0, 4.0, 5.0, 5.0, 7.0, 9.0];
         assert!((std_dev(&v) - 2.0).abs() < 1e-10);
+    }
+
+    // ── QdsAgg compute & fmt ──────────────────────────────────────────────────
+
+    fn make_qds(accepted: bool, bob_rate: f64, charlie_rate: f64, eve: usize) -> RunData {
+        RunData::Qds(QdsRun {
+            shot: 0,
+            channel_bob: ChannelInfo {
+                type_name: "bit-flip".into(),
+                p: 0.0,
+                q: 0.0,
+            },
+            channel_charlie: ChannelInfo {
+                type_name: "bit-flip".into(),
+                p: 0.0,
+                q: 0.0,
+            },
+            num_qubits: 100,
+            message: false,
+            bob_mismatches: (bob_rate * 100.0) as usize,
+            charlie_mismatches: (charlie_rate * 100.0) as usize,
+            bob_mismatch_rate: bob_rate,
+            charlie_mismatch_rate: charlie_rate,
+            signature_accepted: accepted,
+            eve_intercepted_count: eve,
+        })
+    }
+
+    #[test]
+    fn compute_qds_basic() {
+        let runs = vec![make_qds(true, 0.0, 0.0, 0), make_qds(false, 0.1, 0.2, 5)];
+        let agg = compute(&runs);
+        let Aggregate::Qds(a) = agg else {
+            panic!("expected Qds aggregate")
+        };
+        assert_eq!(a.shots, 2);
+        assert_eq!(a.accept_count, 1);
+        assert!((a.mean_bob_mismatch_rate - 0.05).abs() < 1e-10);
+        assert!((a.mean_charlie_mismatch_rate - 0.1).abs() < 1e-10);
+        assert!((a.mean_eve_count - 2.5).abs() < 1e-10);
+    }
+
+    #[test]
+    fn fmt_qds_aggregate() {
+        let runs = vec![make_qds(true, 0.0, 0.0, 0), make_qds(true, 0.01, 0.02, 1)];
+        let agg = compute(&runs);
+        let s = fmt(&agg);
+        assert!(s.contains("GC01"));
+        assert!(s.contains("Bob mismatch"));
+        assert!(s.contains("Sig. accepted"));
+    }
+
+    #[test]
+    fn fmt_e91_aggregate() {
+        let runs = vec![
+            RunData::Qkd(QkdRun {
+                shot: 0,
+                protocol: "E91",
+                channel: ChannelInfo {
+                    type_name: "id".into(),
+                    p: 0.0,
+                    q: 0.0,
+                },
+                channel_bob: None,
+                raw_length: 100,
+                sifted: 10,
+                check_errors: 0,
+                qber: 0.0,
+                qber_available: true,
+                chsh_value: Some(-2.8),
+                eve_count: 0,
+                key_length: 5,
+                keys_match: true,
+                alice_key_hex: None,
+                bob_key_hex: None,
+            }),
+            RunData::Qkd(QkdRun {
+                shot: 1,
+                protocol: "E91",
+                channel: ChannelInfo {
+                    type_name: "id".into(),
+                    p: 0.0,
+                    q: 0.0,
+                },
+                channel_bob: None,
+                raw_length: 100,
+                sifted: 10,
+                check_errors: 1,
+                qber: 0.1,
+                qber_available: true,
+                chsh_value: Some(-1.8),
+                eve_count: 0,
+                key_length: 5,
+                keys_match: false,
+                alice_key_hex: None,
+                bob_key_hex: None,
+            }),
+        ];
+        let agg = compute(&runs);
+        let s = fmt(&agg);
+        assert!(s.contains("E91"));
+        assert!(s.contains("CHSH S-value"));
+        assert!(s.contains("Bell violated"));
+    }
+
+    #[test]
+    fn compute_mixed_runs() {
+        let runs = vec![
+            make_qds(true, 0.0, 0.0, 0),
+            RunData::Auth(crate::run::AuthRun {
+                shot: 1,
+                channel: ChannelInfo {
+                    type_name: "id".into(),
+                    p: 0.0,
+                    q: 0.0,
+                },
+                total_qubits: 10,
+                matches: 10,
+                accuracy: 1.0,
+                authenticated: true,
+                alice_id_hex: None,
+                alice_commitment_hex: None,
+                bob_challenge_hex: None,
+                bob_recovered_hex: None,
+            }),
+        ];
+        let agg = compute(&runs);
+        let Aggregate::Qds(a) = agg else {
+            panic!("expected Qds aggregate")
+        };
+        assert_eq!(a.shots, 2);
+    }
+
+    #[test]
+    fn compute_mixed_runs_qkd() {
+        let runs = vec![
+            RunData::Qkd(QkdRun {
+                shot: 0,
+                protocol: "BB84",
+                channel: ChannelInfo {
+                    type_name: "id".into(),
+                    p: 0.0,
+                    q: 0.0,
+                },
+                channel_bob: None,
+                raw_length: 100,
+                sifted: 10,
+                check_errors: 0,
+                qber: 0.0,
+                qber_available: true,
+                chsh_value: None,
+                eve_count: 0,
+                key_length: 5,
+                keys_match: true,
+                alice_key_hex: None,
+                bob_key_hex: None,
+            }),
+            make_qds(true, 0.0, 0.0, 0),
+        ];
+        let agg = compute(&runs);
+        let Aggregate::Qkd(a) = agg else {
+            panic!("expected Qkd aggregate")
+        };
+        assert_eq!(a.shots, 2);
+    }
+
+    #[test]
+    fn compute_mixed_runs_auth() {
+        let runs = vec![
+            RunData::Auth(crate::run::AuthRun {
+                shot: 0,
+                channel: ChannelInfo {
+                    type_name: "id".into(),
+                    p: 0.0,
+                    q: 0.0,
+                },
+                total_qubits: 10,
+                matches: 10,
+                accuracy: 1.0,
+                authenticated: true,
+                alice_id_hex: None,
+                alice_commitment_hex: None,
+                bob_challenge_hex: None,
+                bob_recovered_hex: None,
+            }),
+            make_qds(true, 0.0, 0.0, 0),
+        ];
+        let agg = compute(&runs);
+        let Aggregate::Auth(a) = agg else {
+            panic!("expected Auth aggregate")
+        };
+        assert_eq!(a.shots, 2);
+    }
+
+    #[test]
+    fn compute_qkd_no_qber() {
+        let runs = vec![RunData::Qkd(QkdRun {
+            shot: 0,
+            protocol: "SARG04",
+            channel: ChannelInfo {
+                type_name: "id".into(),
+                p: 0.0,
+                q: 0.0,
+            },
+            channel_bob: None,
+            raw_length: 100,
+            sifted: 10,
+            check_errors: 0,
+            qber: 0.0,
+            qber_available: false,
+            chsh_value: None,
+            eve_count: 0,
+            key_length: 5,
+            keys_match: true,
+            alice_key_hex: None,
+            bob_key_hex: None,
+        })];
+        let agg = compute(&runs);
+        let Aggregate::Qkd(a) = agg else {
+            panic!("expected Qkd aggregate")
+        };
+        assert_eq!(a.shots, 1);
+        assert_eq!(a.mean_qber, 0.0);
     }
 }

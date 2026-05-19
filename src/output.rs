@@ -1,8 +1,8 @@
 use serde_json::{Value, json};
 use std::fs;
 
-use crate::run::{AuthRun, QkdRun, RunData};
-use crate::stats::{self, Aggregate, AuthAgg, QkdAgg};
+use crate::run::{AuthRun, QdsRun, QkdRun, RunData};
+use crate::stats::{self, Aggregate, AuthAgg, QdsAgg, QkdAgg};
 
 // ── Text formatting ───────────────────────────────────────────────────────────
 
@@ -25,14 +25,30 @@ pub fn fmt_qkd_run(r: &QkdRun, shots: usize) -> String {
         "Sifted bits"
     };
     s.push_str(&format!("Protocol       : {}\n", r.protocol));
-    s.push_str(&format!(
-        "Channel        : {} (p={}",
-        r.channel.type_name, r.channel.p
-    ));
-    if r.channel.p2 != 0.0 {
-        s.push_str(&format!(", p2={}", r.channel.p2));
+    if let Some(cb) = &r.channel_bob {
+        s.push_str(&format!(
+            "Channel (Alice): {} (p={}",
+            r.channel.type_name, r.channel.p
+        ));
+        if r.channel.q != 0.0 {
+            s.push_str(&format!(", q={}", r.channel.q));
+        }
+        s.push_str(")\n");
+        s.push_str(&format!("Channel (Bob)  : {} (p={}", cb.type_name, cb.p));
+        if cb.q != 0.0 {
+            s.push_str(&format!(", q={}", cb.q));
+        }
+        s.push_str(")\n");
+    } else {
+        s.push_str(&format!(
+            "Channel        : {} (p={}",
+            r.channel.type_name, r.channel.p
+        ));
+        if r.channel.q != 0.0 {
+            s.push_str(&format!(", q={}", r.channel.q));
+        }
+        s.push_str(")\n");
     }
-    s.push_str(")\n");
     s.push_str(&format!("{raw_lbl}    : {}\n", r.raw_length));
     s.push_str(&format!(
         "{sft_lbl}    : {} ({:.1}%)\n",
@@ -89,8 +105,8 @@ pub fn fmt_auth_run(r: &AuthRun, shots: usize) -> String {
         "Channel        : {} (p={}",
         r.channel.type_name, r.channel.p
     ));
-    if r.channel.p2 != 0.0 {
-        s.push_str(&format!(", p2={}", r.channel.p2));
+    if r.channel.q != 0.0 {
+        s.push_str(&format!(", q={}", r.channel.q));
     }
     s.push_str(")\n");
     s.push_str(&format!("Rounds         : {}\n", r.total_qubits));
@@ -126,25 +142,93 @@ pub fn fmt_auth_run(r: &AuthRun, shots: usize) -> String {
     s
 }
 
+pub fn fmt_qds_run(r: &QdsRun, shots: usize) -> String {
+    let mut s = String::new();
+    if shots > 1 {
+        s.push_str(&format!(
+            "── Shot {} ──────────────────────────────────\n",
+            r.shot + 1
+        ));
+    }
+    s.push_str("Protocol       : GC01 (QDS)\n");
+    s.push_str(&format!(
+        "Channel (Bob)  : {} (p={}",
+        r.channel_bob.type_name, r.channel_bob.p
+    ));
+    if r.channel_bob.q != 0.0 {
+        s.push_str(&format!(", q={}", r.channel_bob.q));
+    }
+    s.push_str(")\n");
+    s.push_str(&format!(
+        "Channel (Char.): {} (p={}",
+        r.channel_charlie.type_name, r.channel_charlie.p
+    ));
+    if r.channel_charlie.q != 0.0 {
+        s.push_str(&format!(", q={}", r.channel_charlie.q));
+    }
+    s.push_str(")\n");
+    s.push_str(&format!("Public key len : {} qubits\n", r.num_qubits));
+    s.push_str(&format!("Message signed : {}\n", r.message as u8));
+    s.push_str(&format!(
+        "Bob mismatch   : {}/{} ({:.4})\n",
+        r.bob_mismatches, r.num_qubits, r.bob_mismatch_rate
+    ));
+    s.push_str(&format!(
+        "Charlie mism.  : {}/{} ({:.4})\n",
+        r.charlie_mismatches, r.num_qubits, r.charlie_mismatch_rate
+    ));
+    s.push_str(&format!("Eve intercepts : {}\n", r.eve_intercepted_count));
+    s.push_str(&format!(
+        "Sig. accepted  : {}\n",
+        if r.signature_accepted {
+            "YES"
+        } else {
+            "NO (rejected)"
+        }
+    ));
+    s
+}
+
 // ── JSON conversion ───────────────────────────────────────────────────────────
 
 pub fn run_to_json(run: &RunData) -> Value {
     match run {
         RunData::Qkd(r) => {
-            let mut j = json!({
-                "shot": r.shot + 1,
-                "channel_type": r.channel.type_name,
-                "channel_p": r.channel.p,
-                "channel_p2": r.channel.p2,
-                "raw_length": r.raw_length,
-                "sifted": r.sifted,
-                "sift_rate": stats::pct(r.sifted, r.raw_length) / 100.0,
-                "check_errors": r.check_errors,
-                "qber": if r.qber_available { json!(r.qber) } else { json!(null) },
-                "eve_count": r.eve_count,
-                "key_length": r.key_length,
-                "keys_match": r.keys_match,
-            });
+            let base = if let Some(cb) = &r.channel_bob {
+                json!({
+                    "shot": r.shot + 1,
+                    "channel_alice_type": r.channel.type_name,
+                    "channel_alice_p": r.channel.p,
+                    "channel_alice_q": r.channel.q,
+                    "channel_bob_type": cb.type_name,
+                    "channel_bob_p": cb.p,
+                    "channel_bob_q": cb.q,
+                    "raw_length": r.raw_length,
+                    "sifted": r.sifted,
+                    "sift_rate": stats::pct(r.sifted, r.raw_length) / 100.0,
+                    "check_errors": r.check_errors,
+                    "qber": if r.qber_available { json!(r.qber) } else { json!(null) },
+                    "eve_count": r.eve_count,
+                    "key_length": r.key_length,
+                    "keys_match": r.keys_match,
+                })
+            } else {
+                json!({
+                    "shot": r.shot + 1,
+                    "channel_type": r.channel.type_name,
+                    "channel_p": r.channel.p,
+                    "channel_q": r.channel.q,
+                    "raw_length": r.raw_length,
+                    "sifted": r.sifted,
+                    "sift_rate": stats::pct(r.sifted, r.raw_length) / 100.0,
+                    "check_errors": r.check_errors,
+                    "qber": if r.qber_available { json!(r.qber) } else { json!(null) },
+                    "eve_count": r.eve_count,
+                    "key_length": r.key_length,
+                    "keys_match": r.keys_match,
+                })
+            };
+            let mut j = base;
             if let Some(chsh) = r.chsh_value {
                 j["chsh_value"] = json!(chsh);
                 j["bell_violated"] = json!(chsh.abs() > 2.0);
@@ -162,7 +246,7 @@ pub fn run_to_json(run: &RunData) -> Value {
                 "shot": r.shot + 1,
                 "channel_type": r.channel.type_name,
                 "channel_p": r.channel.p,
-                "channel_p2": r.channel.p2,
+                "channel_q": r.channel.q,
                 "total_qubits": r.total_qubits,
                 "matches": r.matches,
                 "accuracy": r.accuracy,
@@ -182,6 +266,23 @@ pub fn run_to_json(run: &RunData) -> Value {
             }
             j
         }
+        RunData::Qds(r) => json!({
+            "shot": r.shot + 1,
+            "channel_bob_type": r.channel_bob.type_name,
+            "channel_bob_p": r.channel_bob.p,
+            "channel_bob_q": r.channel_bob.q,
+            "channel_charlie_type": r.channel_charlie.type_name,
+            "channel_charlie_p": r.channel_charlie.p,
+            "channel_charlie_q": r.channel_charlie.q,
+            "num_qubits": r.num_qubits,
+            "message": r.message as u8,
+            "bob_mismatches": r.bob_mismatches,
+            "charlie_mismatches": r.charlie_mismatches,
+            "bob_mismatch_rate": r.bob_mismatch_rate,
+            "charlie_mismatch_rate": r.charlie_mismatch_rate,
+            "eve_intercepted_count": r.eve_intercepted_count,
+            "signature_accepted": r.signature_accepted,
+        }),
     }
 }
 
@@ -225,6 +326,24 @@ pub fn aggregate_to_json(agg: &Aggregate) -> Value {
             "std_accuracy": std_accuracy,
             "authentication_rate": *auth_count as f64 / *shots as f64,
         }),
+        Aggregate::Qds(QdsAgg {
+            shots,
+            mean_bob_mismatch_rate,
+            std_bob_mismatch_rate,
+            mean_charlie_mismatch_rate,
+            std_charlie_mismatch_rate,
+            accept_count,
+            mean_eve_count,
+        }) => json!({
+            "protocol": "GC01",
+            "shots": shots,
+            "mean_bob_mismatch_rate": mean_bob_mismatch_rate,
+            "std_bob_mismatch_rate": std_bob_mismatch_rate,
+            "mean_charlie_mismatch_rate": mean_charlie_mismatch_rate,
+            "std_charlie_mismatch_rate": std_charlie_mismatch_rate,
+            "signature_accept_rate": *accept_count as f64 / *shots as f64,
+            "mean_eve_count": mean_eve_count,
+        }),
     }
 }
 
@@ -234,11 +353,23 @@ pub fn qkd_to_csv(runs: &[RunData], detail: bool) -> String {
     let has_chsh = runs
         .iter()
         .any(|r| matches!(r, RunData::Qkd(d) if d.chsh_value.is_some()));
-    let mut hdrs = vec![
-        "shot",
-        "channel_type",
-        "channel_p",
-        "channel_p2",
+    let has_two_channels = runs
+        .iter()
+        .any(|r| matches!(r, RunData::Qkd(d) if d.channel_bob.is_some()));
+    let mut hdrs: Vec<&str> = vec!["shot"];
+    if has_two_channels {
+        hdrs.extend_from_slice(&[
+            "channel_alice_type",
+            "channel_alice_p",
+            "channel_alice_q",
+            "channel_bob_type",
+            "channel_bob_p",
+            "channel_bob_q",
+        ]);
+    } else {
+        hdrs.extend_from_slice(&["channel_type", "channel_p", "channel_q"]);
+    }
+    hdrs.extend_from_slice(&[
         "raw_length",
         "sifted",
         "sift_rate",
@@ -247,7 +378,7 @@ pub fn qkd_to_csv(runs: &[RunData], detail: bool) -> String {
         "eve_count",
         "key_length",
         "keys_match",
-    ];
+    ]);
     if has_chsh {
         hdrs.extend_from_slice(&["chsh_value", "bell_violated"]);
     }
@@ -258,11 +389,25 @@ pub fn qkd_to_csv(runs: &[RunData], detail: bool) -> String {
     let mut lines = vec![hdrs.join(",")];
     for run in runs {
         if let RunData::Qkd(r) = run {
-            let mut row = vec![
-                (r.shot + 1).to_string(),
-                r.channel.type_name.clone(),
-                r.channel.p.to_string(),
-                r.channel.p2.to_string(),
+            let mut row = vec![(r.shot + 1).to_string()];
+            if has_two_channels {
+                let cb = r.channel_bob.as_ref();
+                row.extend_from_slice(&[
+                    r.channel.type_name.clone(),
+                    r.channel.p.to_string(),
+                    r.channel.q.to_string(),
+                    cb.map_or("N/A".into(), |c| c.type_name.clone()),
+                    cb.map_or("N/A".into(), |c| c.p.to_string()),
+                    cb.map_or("N/A".into(), |c| c.q.to_string()),
+                ]);
+            } else {
+                row.extend_from_slice(&[
+                    r.channel.type_name.clone(),
+                    r.channel.p.to_string(),
+                    r.channel.q.to_string(),
+                ]);
+            }
+            row.extend_from_slice(&[
                 r.raw_length.to_string(),
                 r.sifted.to_string(),
                 format!("{:.4}", stats::pct(r.sifted, r.raw_length) / 100.0),
@@ -275,7 +420,7 @@ pub fn qkd_to_csv(runs: &[RunData], detail: bool) -> String {
                 r.eve_count.to_string(),
                 r.key_length.to_string(),
                 r.keys_match.to_string(),
-            ];
+            ]);
             if has_chsh {
                 match r.chsh_value {
                     Some(c) => {
@@ -303,7 +448,7 @@ pub fn auth_to_csv(runs: &[RunData], detail: bool) -> String {
         "shot",
         "channel_type",
         "channel_p",
-        "channel_p2",
+        "channel_q",
         "total_qubits",
         "matches",
         "accuracy",
@@ -325,7 +470,7 @@ pub fn auth_to_csv(runs: &[RunData], detail: bool) -> String {
                 (r.shot + 1).to_string(),
                 r.channel.type_name.clone(),
                 r.channel.p.to_string(),
-                r.channel.p2.to_string(),
+                r.channel.q.to_string(),
                 r.total_qubits.to_string(),
                 r.matches.to_string(),
                 format!("{:.6}", r.accuracy),
@@ -337,6 +482,51 @@ pub fn auth_to_csv(runs: &[RunData], detail: bool) -> String {
                 row.push(r.bob_challenge_hex.clone().unwrap_or_default());
                 row.push(r.bob_recovered_hex.clone().unwrap_or_default());
             }
+            lines.push(row.join(","));
+        }
+    }
+    lines.join("\n")
+}
+
+pub fn qds_to_csv(runs: &[RunData]) -> String {
+    let hdrs = [
+        "shot",
+        "channel_bob_type",
+        "channel_bob_p",
+        "channel_bob_q",
+        "channel_charlie_type",
+        "channel_charlie_p",
+        "channel_charlie_q",
+        "num_qubits",
+        "message",
+        "bob_mismatches",
+        "charlie_mismatches",
+        "bob_mismatch_rate",
+        "charlie_mismatch_rate",
+        "eve_intercepted_count",
+        "signature_accepted",
+    ];
+
+    let mut lines = vec![hdrs.join(",")];
+    for run in runs {
+        if let RunData::Qds(r) = run {
+            let row = [
+                (r.shot + 1).to_string(),
+                r.channel_bob.type_name.clone(),
+                r.channel_bob.p.to_string(),
+                r.channel_bob.q.to_string(),
+                r.channel_charlie.type_name.clone(),
+                r.channel_charlie.p.to_string(),
+                r.channel_charlie.q.to_string(),
+                r.num_qubits.to_string(),
+                (r.message as u8).to_string(),
+                r.bob_mismatches.to_string(),
+                r.charlie_mismatches.to_string(),
+                format!("{:.6}", r.bob_mismatch_rate),
+                format!("{:.6}", r.charlie_mismatch_rate),
+                r.eve_intercepted_count.to_string(),
+                r.signature_accepted.to_string(),
+            ];
             lines.push(row.join(","));
         }
     }
@@ -360,6 +550,7 @@ pub fn write_file(path: &str, runs: &[RunData], detail: bool) {
         match &runs[0] {
             RunData::Qkd(_) => qkd_to_csv(runs, detail),
             RunData::Auth(_) => auth_to_csv(runs, detail),
+            RunData::Qds(_) => qds_to_csv(runs),
         }
     } else {
         let mut out = String::new();
@@ -368,6 +559,7 @@ pub fn write_file(path: &str, runs: &[RunData], detail: bool) {
                 match run {
                     RunData::Qkd(r) => fmt_qkd_run(r, shots),
                     RunData::Auth(r) => fmt_auth_run(r, shots),
+                    RunData::Qds(r) => fmt_qds_run(r, shots),
                 }
                 .as_str(),
             );
@@ -403,8 +595,9 @@ mod tests {
             channel: ChannelInfo {
                 type_name: "bit-flip".into(),
                 p: 0.01,
-                p2: 0.0,
+                q: 0.0,
             },
+            channel_bob: None,
             raw_length: 1000,
             sifted: 500,
             check_errors: 5,
@@ -419,13 +612,13 @@ mod tests {
         }
     }
 
-    fn make_auth(detail: bool, authenticated: bool, p2: f64) -> AuthRun {
+    fn make_auth(detail: bool, authenticated: bool, q: f64) -> AuthRun {
         AuthRun {
             shot: 0,
             channel: ChannelInfo {
                 type_name: "depolarizing".into(),
                 p: 0.0,
-                p2,
+                q,
             },
             total_qubits: 100,
             matches: 98,
@@ -435,6 +628,59 @@ mod tests {
             alice_commitment_hex: detail.then(|| "ddeeff".into()),
             bob_challenge_hex: detail.then(|| "112233".into()),
             bob_recovered_hex: detail.then(|| "445566".into()),
+        }
+    }
+
+    fn make_qds(accepted: bool) -> crate::run::QdsRun {
+        use crate::run::QdsRun;
+        QdsRun {
+            shot: 0,
+            channel_bob: ChannelInfo {
+                type_name: "bit-flip".into(),
+                p: 0.0,
+                q: 0.0,
+            },
+            channel_charlie: ChannelInfo {
+                type_name: "depolarizing".into(),
+                p: 0.05,
+                q: 0.0,
+            },
+            num_qubits: 100,
+            message: false,
+            bob_mismatches: 0,
+            charlie_mismatches: 0,
+            bob_mismatch_rate: 0.0,
+            charlie_mismatch_rate: 0.0,
+            signature_accepted: accepted,
+            eve_intercepted_count: 0,
+        }
+    }
+
+    fn make_qkd_dual(protocol: &'static str, chsh: Option<f64>, qber_avail: bool) -> QkdRun {
+        QkdRun {
+            protocol,
+            shot: 0,
+            channel: ChannelInfo {
+                type_name: "bit-flip".into(),
+                p: 0.01,
+                q: 0.0,
+            },
+            channel_bob: Some(ChannelInfo {
+                type_name: "depolarizing".into(),
+                p: 0.05,
+                q: 0.0,
+            }),
+            raw_length: 1000,
+            sifted: 500,
+            check_errors: 5,
+            qber: 0.02,
+            qber_available: qber_avail,
+            eve_count: 0,
+            key_length: 247,
+            keys_match: true,
+            chsh_value: chsh,
+            alice_key_hex: None,
+            bob_key_hex: None,
         }
     }
 
@@ -486,6 +732,27 @@ mod tests {
         assert!(s.contains("N/A"));
     }
 
+    #[test]
+    fn fmt_qkd_run_dual_channel_shows_alice_and_bob() {
+        let r = make_qkd_dual("BBM92", None, true);
+        let s = fmt_qkd_run(&r, 1);
+        assert!(s.contains("Channel (Alice)"), "missing Alice label");
+        assert!(s.contains("Channel (Bob)"), "missing Bob label");
+        assert!(s.contains("depolarizing"), "missing Bob channel type");
+    }
+
+    #[test]
+    fn fmt_qkd_run_dual_channel_bob_q() {
+        let mut r = make_qkd_dual("E91", None, true);
+        r.channel_bob = Some(ChannelInfo {
+            type_name: "amplitude-phase-damping".into(),
+            p: 0.05,
+            q: 0.02,
+        });
+        let s = fmt_qkd_run(&r, 1);
+        assert!(s.contains("q=0.02"), "missing Bob q");
+    }
+
     // ── fmt_auth_run ──────────────────────────────────────────────────────────
 
     #[test]
@@ -512,10 +779,10 @@ mod tests {
     }
 
     #[test]
-    fn fmt_auth_run_with_p2() {
+    fn fmt_auth_run_with_q() {
         let r = make_auth(false, true, 0.05);
         let s = fmt_auth_run(&r, 1);
-        assert!(s.contains("p2=0.05"));
+        assert!(s.contains("q=0.05"));
     }
 
     #[test]
@@ -555,6 +822,54 @@ mod tests {
     fn run_to_json_qkd_qber_unavailable() {
         let j = run_to_json(&RunData::Qkd(make_qkd("E91", None, false, false)));
         assert!(j["qber"].is_null(), "qber should be null when unavailable");
+    }
+
+    #[test]
+    fn run_to_json_qkd_dual_channel_fields() {
+        let j = run_to_json(&RunData::Qkd(make_qkd_dual("BBM92", None, true)));
+        assert_eq!(j["channel_alice_type"], "bit-flip");
+        assert_eq!(j["channel_bob_type"], "depolarizing");
+        assert!(
+            j.get("channel_type").is_none(),
+            "channel_type should be absent in dual mode"
+        );
+    }
+
+    #[test]
+    fn run_to_json_qkd_dual_qber_unavailable() {
+        let j = run_to_json(&RunData::Qkd(make_qkd_dual("BBM92", None, false)));
+        assert!(j["qber"].is_null(), "qber should be null when unavailable");
+    }
+
+    #[test]
+    fn qkd_csv_dual_channel_headers() {
+        let runs = vec![RunData::Qkd(make_qkd_dual("BBM92", None, true))];
+        let csv = qkd_to_csv(&runs, false);
+        let hdr = csv.lines().next().unwrap();
+        assert!(
+            hdr.contains("channel_alice_type"),
+            "missing channel_alice_type"
+        );
+        assert!(hdr.contains("channel_bob_type"), "missing channel_bob_type");
+        assert!(
+            !hdr.contains("channel_type,"),
+            "should not have plain channel_type"
+        );
+    }
+
+    #[test]
+    fn qkd_csv_single_channel_headers_unchanged() {
+        let runs = vec![RunData::Qkd(make_qkd("BB84", None, false, true))];
+        let csv = qkd_to_csv(&runs, false);
+        let hdr = csv.lines().next().unwrap();
+        assert!(
+            hdr.contains("channel_type"),
+            "missing channel_type for single-channel"
+        );
+        assert!(
+            !hdr.contains("channel_alice_type"),
+            "should not have alice label for single"
+        );
     }
 
     #[test]
@@ -788,6 +1103,151 @@ mod tests {
         ];
         print_terminal(&runs, 2, true);
     }
+
+    // ── fmt_qds_run ───────────────────────────────────────────────────────────
+
+    #[test]
+    fn fmt_qds_run_single_shot() {
+        let r = make_qds(true);
+        let s = fmt_qds_run(&r, 1);
+        assert!(s.contains("GC01"));
+        assert!(s.contains("bit-flip"));
+        assert!(s.contains("depolarizing"));
+        assert!(s.contains("YES"));
+        assert!(!s.contains("── Shot"));
+    }
+
+    #[test]
+    fn fmt_qds_run_multi_shot_has_header() {
+        let r = make_qds(true);
+        let s = fmt_qds_run(&r, 3);
+        assert!(s.contains("── Shot 1"));
+    }
+
+    #[test]
+    fn fmt_qds_run_not_accepted() {
+        let r = make_qds(false);
+        let s = fmt_qds_run(&r, 1);
+        assert!(s.contains("NO (rejected)"));
+    }
+
+    #[test]
+    fn fmt_qds_run_with_q() {
+        let mut r = make_qds(true);
+        r.channel_bob = ChannelInfo {
+            type_name: "amplitude-phase-damping".into(),
+            p: 0.1,
+            q: 0.05,
+        };
+        let s = fmt_qds_run(&r, 1);
+        assert!(s.contains("q=0.05"));
+    }
+
+    // ── run_to_json for Qds ───────────────────────────────────────────────────
+
+    #[test]
+    fn run_to_json_qds_fields() {
+        let j = run_to_json(&RunData::Qds(make_qds(true)));
+        assert_eq!(j["channel_bob_type"], "bit-flip");
+        assert_eq!(j["channel_charlie_type"], "depolarizing");
+        assert!(j["signature_accepted"].as_bool().unwrap());
+        assert!(j["bob_mismatch_rate"].is_number());
+    }
+
+    // ── aggregate_to_json for Qds ─────────────────────────────────────────────
+
+    #[test]
+    fn aggregate_to_json_qds() {
+        let runs = vec![RunData::Qds(make_qds(true)), RunData::Qds(make_qds(false))];
+        let j = aggregate_to_json(&stats::compute(&runs));
+        assert_eq!(j["protocol"], "GC01");
+        assert!(j["mean_bob_mismatch_rate"].is_number());
+        assert!(j["signature_accept_rate"].is_number());
+    }
+
+    // ── qds_to_csv ────────────────────────────────────────────────────────────
+
+    #[test]
+    fn qds_csv_basic_structure() {
+        let runs = vec![RunData::Qds(make_qds(true))];
+        let csv = qds_to_csv(&runs);
+        let hdr = csv.lines().next().unwrap();
+        assert!(hdr.contains("channel_bob_type"));
+        assert!(hdr.contains("signature_accepted"));
+        assert_eq!(csv.lines().count(), 2);
+    }
+
+    #[test]
+    fn qds_csv_skips_non_qds_entries() {
+        let runs = vec![
+            RunData::Qds(make_qds(true)),
+            RunData::Qkd(make_qkd("BB84", None, false, true)),
+        ];
+        let csv = qds_to_csv(&runs);
+        assert_eq!(csv.lines().count(), 2, "should have header + 1 QDS row");
+    }
+
+    // ── write_file for Qds ────────────────────────────────────────────────────
+
+    #[test]
+    fn write_file_csv_qds() {
+        let dir = tempfile::TempDir::new().unwrap();
+        let path = dir.path().join("out.csv").to_str().unwrap().to_string();
+        let runs = vec![RunData::Qds(make_qds(true))];
+        write_file(&path, &runs, false);
+        let content = std::fs::read_to_string(&path).unwrap();
+        assert!(content.contains("signature_accepted"));
+    }
+
+    #[test]
+    fn write_file_txt_qds() {
+        let dir = tempfile::TempDir::new().unwrap();
+        let path = dir.path().join("out.txt").to_str().unwrap().to_string();
+        let runs = vec![RunData::Qds(make_qds(true)), RunData::Qds(make_qds(true))];
+        write_file(&path, &runs, false);
+        let content = std::fs::read_to_string(&path).unwrap();
+        assert!(content.contains("GC01"));
+        assert!(content.contains("Aggregate"));
+    }
+
+    #[test]
+    fn write_file_json_qds() {
+        let dir = tempfile::TempDir::new().unwrap();
+        let path = dir.path().join("out.json").to_str().unwrap().to_string();
+        let runs = vec![RunData::Qds(make_qds(true))];
+        write_file(&path, &runs, false);
+        let content = std::fs::read_to_string(&path).unwrap();
+        let j: serde_json::Value = serde_json::from_str(&content).unwrap();
+        assert_eq!(j["aggregate"]["protocol"], "GC01");
+    }
+
+    // ── print_terminal for Qds ────────────────────────────────────────────────
+
+    #[test]
+    fn print_terminal_single_qds_no_panic() {
+        let runs = vec![RunData::Qds(make_qds(true))];
+        print_terminal(&runs, 1, false);
+    }
+
+    #[test]
+    fn fmt_qkd_run_dual_channel() {
+        let mut r = make_qkd("bbm92", None, true, true);
+        r.channel_bob = Some(ChannelInfo {
+            type_name: "bit-flip".into(),
+            p: 0.05,
+            q: 0.0,
+        });
+        let s = fmt_qkd_run(&r, 1);
+        assert!(s.contains("Channel (Alice)"));
+        assert!(s.contains("Channel (Bob)"));
+        assert!(s.contains("bit-flip"));
+    }
+
+    #[test]
+    fn print_terminal_multi_qds_no_panic() {
+        let runs = vec![RunData::Qds(make_qds(true)), RunData::Qds(make_qds(false))];
+        print_terminal(&runs, 2, false);
+    }
 }
 
 // ── Terminal output ───────────────────────────────────────────────────────────
@@ -798,6 +1258,7 @@ pub fn print_terminal(runs: &[RunData], shots: usize, detail: bool) {
         match &runs[0] {
             RunData::Qkd(r) => print!("{}", fmt_qkd_run(r, 1)),
             RunData::Auth(r) => print!("{}", fmt_auth_run(r, 1)),
+            RunData::Qds(r) => print!("{}", fmt_qds_run(r, 1)),
         }
     } else {
         let agg = stats::compute(runs);
