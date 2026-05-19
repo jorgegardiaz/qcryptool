@@ -2,6 +2,11 @@
 name = "qcryptool"
 version = "0.0.1"
 edition = "2024"
+description = "CLI simulator for quantum cryptography protocols: BB84, B92, BBM92, E91, Six-State, SARG04, QIA-QZKP, and GC01"
+license = "MIT"
+repository = "https://github.com/jorgegardiaz/qcryptool"
+keywords = ["quantum", "cryptography", "qkd", "simulation", "cli"]
+categories = ["simulation", "cryptography", "command-line-utilities"]
 
 [[bin]]
 name = "qcryptool"
@@ -12,7 +17,7 @@ tempfile = "3"
 serde_json = "1"
 
 [dependencies]
-qcrypto = "0.1.0"
+qcrypto = "0.1.1"
 serde = { version = "1", features = ["derive"] }
 clap = { version = "4", features = ["derive"] }
 serde_json = "1"

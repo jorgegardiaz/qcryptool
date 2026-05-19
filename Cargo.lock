@@ -592,9 +592,9 @@ dependencies = [
 
 [[package]]
 name = "qcrypto"
-version = "0.1.0"
+version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "46547f51c475a94f77b4928034f393815d1d2e2d598ac735f5983c1c4f89babe"
+checksum = "9cf89985467fc28ddab83eddd9356bb37d0470550048935f3312ae8fd2f79f21"
 dependencies = [
  "nalgebra",
  "ndarray",
