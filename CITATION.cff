@@ -13,7 +13,7 @@ authors:
 repository-code: "https://github.com/jorgegardiaz/qcryptool"
 url: "https://crates.io/crates/qcryptool"
 abstract: >-
-  CLI simulator for quantum cryptography protocols, powered by qcrypto.
+  CLI simulator of quantum cryptographic protocols, powered by qcrypto.
 keywords:
   - quantum-cryptography
   - simulation

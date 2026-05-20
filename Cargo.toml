@@ -2,7 +2,7 @@
 name = "qcryptool"
 version = "0.1.0"
 edition = "2024"
-description = "CLI simulator for quantum cryptography protocols."
+description = "CLI simulator of quantum cryptographic protocols."
 license = "MIT"
 repository = "https://github.com/jorgegardiaz/qcryptool"
 keywords = ["quantum", "cryptography", "qkd", "simulation", "cli"]
