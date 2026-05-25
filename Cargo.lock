@@ -63,9 +63,9 @@ dependencies = [
 
 [[package]]
 name = "autocfg"
-version = "1.5.0"
+version = "1.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c08606f8c3cbf4ce6ec8e28fb0014a2c086708fe954eaa885384a6165172e7e8"
+checksum = "f2032f911046de80f0a198e0901378627c33f59ea0ac00e363d481118bd70a53"
 
 [[package]]
 name = "bitflags"
@@ -592,9 +592,9 @@ dependencies = [
 
 [[package]]
 name = "qcrypto"
-version = "0.2.0"
+version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b273689fbff083818184049f305b19a2a1ff20afaf355826856a084f710fdb3b"
+checksum = "2ac85c0e2d58491caa013157e38cef462525cb5a35a6ec2262bd842726f45291"
 dependencies = [
  "nalgebra",
  "ndarray",
@@ -607,7 +607,7 @@ dependencies = [
 
 [[package]]
 name = "qcryptool"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "clap",
  "indicatif",

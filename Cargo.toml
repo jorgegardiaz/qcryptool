@@ -1,6 +1,6 @@
 [package]
 name = "qcryptool"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2024"
 description = "CLI simulator of quantum cryptographic protocols."
 license = "MIT"
@@ -17,7 +17,7 @@ tempfile = "3"
 serde_json = "1"
 
 [dependencies]
-qcrypto = "0.2.0"
+qcrypto = "0.3.0"
 serde = { version = "1", features = ["derive"] }
 clap = { version = "4", features = ["derive"] }
 serde_json = "1"
