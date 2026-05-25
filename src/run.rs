@@ -83,7 +83,6 @@ pub fn keys_equal(a: &[bool], b: &[bool]) -> bool {
 
 // ── Per-shot runners ──────────────────────────────────────────────────────────
 
-#[allow(clippy::too_many_arguments)]
 pub fn run_bb84(
     shot: usize,
     n: usize,
@@ -119,7 +118,6 @@ pub fn run_bb84(
     })
 }
 
-#[allow(clippy::too_many_arguments)]
 pub fn run_b92(
     shot: usize,
     n: usize,
@@ -156,7 +154,6 @@ pub fn run_b92(
     })
 }
 
-#[allow(clippy::too_many_arguments)]
 pub fn run_bbm92(
     shot: usize,
     n: usize,
@@ -194,7 +191,6 @@ pub fn run_bbm92(
     })
 }
 
-#[allow(clippy::too_many_arguments)]
 pub fn run_e91(
     shot: usize,
     n: usize,
@@ -233,7 +229,6 @@ pub fn run_e91(
     })
 }
 
-#[allow(clippy::too_many_arguments)]
 pub fn run_six_state(
     shot: usize,
     n: usize,
@@ -269,7 +264,6 @@ pub fn run_six_state(
     })
 }
 
-#[allow(clippy::too_many_arguments)]
 pub fn run_sarg04(
     shot: usize,
     n: usize,
@@ -305,7 +299,6 @@ pub fn run_sarg04(
     })
 }
 
-#[allow(clippy::too_many_arguments)]
 pub fn run_gc01(
     shot: usize,
     n: usize,

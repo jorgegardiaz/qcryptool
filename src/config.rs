@@ -175,8 +175,6 @@ impl ExperimentConfig {
 }
 
 // ── Internal helpers ──────────────────────────────────────────────────────────
-
-#[allow(clippy::too_many_arguments)]
 fn resolve_mix_from_parts(
     specs: Option<Vec<ChannelSpec>>,
     channel: &str,
